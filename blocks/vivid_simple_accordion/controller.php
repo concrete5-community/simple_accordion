@@ -4,9 +4,12 @@ namespace Concrete\Package\SimpleAccordion\Block\VividSimpleAccordion;
 
 use Concrete\Core\Block\BlockController;
 use Concrete\Core\Database\Connection\Connection;
+use Concrete\Core\File\Tracker\FileTrackableInterface;
 use Concrete\Core\Page\Page;
+use Concrete\Core\Statistics\UsageTracker\AggregateTracker;
+use Concrete\Core\Editor\LinkAbstractor;
 
-class Controller extends BlockController
+class Controller extends BlockController implements FileTrackableInterface
 {
     /**
      * {@inheritdoc}
@@ -45,6 +48,17 @@ class Controller extends BlockController
      * @var string|null
      */
     protected $semantic;
+
+    /**
+     * @var \Concrete\Core\Statistics\UsageTracker\AggregateTracker|null
+     */
+    protected $tracker;
+
+    public function __construct($obj = null, $tracker = null)
+    {
+        parent::__construct($obj);
+        $this->tracker = $tracker;
+    }
 
     /**
      * {@inheritdoc}
@@ -89,7 +103,14 @@ class Controller extends BlockController
     public function view()
     {
         $cn = $this->app->make(Connection::class);
-        $items = $cn->fetchAll('SELECT * from btVividSimpleAccordionItem WHERE bID = ? ORDER BY sortOrder', [$this->bID]);
+        $items = array_map(
+            static function (array $item) {
+                $item['description'] = LinkAbstractor::translateFrom($item['description']);
+
+                return $item;
+            },
+            $cn->fetchAll('SELECT * from btVividSimpleAccordionItem WHERE bID = ? ORDER BY sortOrder', [$this->bID])
+        );
         $this->set('items', $items);
         if ($items === []) {
             $page = Page::getCurrentPage();
@@ -145,6 +166,7 @@ class Controller extends BlockController
         $cn = $this->app->make(Connection::class);
         $cn->delete('btVividSimpleAccordionItem', ['bID' => $this->bID]);
         parent::delete();
+        $this->getTracker()->forget($this);
     }
 
     /**
@@ -164,8 +186,8 @@ class Controller extends BlockController
                     foreach (array_keys($args['sortOrder']) as $i) {
                         $cn->insert('btVividSimpleAccordionItem', [
                             'bID' => $this->bID,
-                            'title' => isset($args['title'][$i]) ? trim($args['title'][$i]) : '',
-                            'description' => isset($args['description'][$i]) ? trim($args['description'][$i]) : '',
+                            'title' => isset($args['title'][$i]) ? (string) $args['title'][$i] : '',
+                            'description' => isset($args['description'][$i]) ? LinkAbstractor::translateTo((string) $args['description'][$i]) : '',
                             'state' => isset($args['state'][$i]) ? trim($args['state'][$i]) : '',
                             'sortOrder' => $sortOrder,
                         ]);
@@ -178,6 +200,78 @@ class Controller extends BlockController
         if ($blockObject) {
             $blockObject->setCustomTemplate(isset($args['framework']) ? $args['framework'] : null);
         }
+        $this->getTracker()->track($this);
+    }
+
+    /**
+     * {@inheritdoc}
+     *
+     * @see \Concrete\Core\File\Tracker\FileTrackableInterface::getUsedCollection()
+     */
+    public function getUsedCollection()
+    {
+        return $this->getCollectionObject();
+    }
+
+    /**
+     * {@inheritdoc}
+     *
+     * @see \Concrete\Core\File\Tracker\FileTrackableInterface::getUsedFiles()
+     */
+    public function getUsedFiles()
+    {
+        $cn = $this->app->make(Connection::class);
+        $items = $cn->fetchAll('SELECT * from btVividSimpleAccordionItem WHERE bID = ? ORDER BY sortOrder', [$this->bID]);
+
+        return array_merge(
+            $this->getUsedFilesImages($items),
+            $this->getUsedFilesDownload($items)
+        );
+    }
+
+    /**
+     * @return \Concrete\Core\Statistics\UsageTracker\AggregateTracker
+     */
+    protected function getTracker()
+    {
+        if ($this->tracker === null) {
+            $this->tracker = $this->app->make(AggregateTracker::class);
+        }
+
+        return $this->tracker;
+    }
+
+    private function getUsedFilesImages(array $items)
+    {
+        $ids = [];
+        $matches = null;
+        foreach ($items as $item) {
+            if (preg_match_all('/\<concrete-picture[^>]*?fID\s*=\s*[\'"]([^\'"]*?)[\'"]/i', $item['description'], $matches)) {
+                foreach ($matches[1] as $match) {
+                    $ids[] = (int) $match;
+                }
+            }
+        }
+
+        return $ids;
+    }
+
+    /**
+     * @return int[]
+     */
+    private function getUsedFilesDownload(array $items)
+    {
+        $ids = [];
+        $matches = null;
+        foreach ($items as $item) {
+            if (preg_match_all('(FID_DL_\d+)', $item['description'], $matches)) {
+                foreach ($matches[0] as $match) {
+                    $ids[] = (int) (explode('_', $match)[2]);
+                }
+            }
+        }
+
+        return $ids;
     }
 
     private function addOrEdit()
@@ -186,7 +280,14 @@ class Controller extends BlockController
         $this->set('editor', $this->app->make('editor'));
         if ($this->bID) {
             $cn = $this->app->make(Connection::class);
-            $this->set('items', $cn->fetchAll('SELECT * from btVividSimpleAccordionItem WHERE bID = ? ORDER BY sortOrder', [$this->bID]));
+            $this->set('items', array_map(
+                static function (array $item) {
+                    $item['description'] = LinkAbstractor::translateFromEditMode($item['description']);
+
+                    return $item;
+                },
+                $cn->fetchAll('SELECT * from btVividSimpleAccordionItem WHERE bID = ? ORDER BY sortOrder', [$this->bID])
+            ));
         } else {
             $this->set('framework', '');
             $this->set('semantic', 'span');
