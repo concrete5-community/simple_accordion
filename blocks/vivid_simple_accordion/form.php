@@ -17,57 +17,19 @@ $tabsPrefix = version_compare(APP_VERSION, '9') < 0 ? 'ccm-tab-content-' : '';
 
 ?>
 
-<style type="text/css">
-.panel-heading {
-    cursor: move;
-}
-.panel-heading .label-shell {
-    margin-top: 5px;
-}
-.panel-heading .label-shell label {
-    display: block;
-    text-align: right;
-}
-
-.panel-heading .label-shell label i {
-    float: left;
-    margin-top: 3px;
-    cursor: move;
-}
-.panel-body {
-    display: none;
-}
-.item-summary {
-    padding: 10px;
-}
-.item-summary.active {
-    background: #efefef;
-}
-.item-detail {
-    display: none;
-    background: #efefef;
-    padding: 10px;
-}
-.tab-pane {
-    padding: 20px 0;
-}
-.item-shell {
-    position: relative;
-    padding-bottom: 0 !important;
-}
-</style>
-
 <?= $ui->tabs([
         ['vsa-pane-items', t('Items'), true],
         ['vsa-pane-settings', t('Settings')],
 ]) ?>
 <div class="tab-content">
     <div class="ccm-tab-content tab-pane active" role="tabpanel" id="<?= $tabsPrefix ?>vsa-pane-items">
-        <div class="well">
+        <div class="items-container"></div>
+        <div class="small text-muted text-right text-end">
             <?= t('You can rearrange items if needed.') ?>
         </div>
-        <div class="items-container"></div>
-        <button type="button" class="btn btn-success btn-add-item"><?= t('Add Item') ?></button>
+        <div style="padding-top: 5px">
+            <button type="button" class="btn btn-success btn-add-item"><?= t('Add Item') ?></button>
+        </div>
     </div>
     <div class="ccm-tab-content tab-pane" role="tabpanel" id="<?= $tabsPrefix ?>vsa-pane-settings">
         <div class="form-group">
@@ -102,22 +64,45 @@ $tabsPrefix = version_compare(APP_VERSION, '9') < 0 ? 'ccm-tab-content-' : '';
 </div>
 
 <script type="text/template" id="vsa-item-template">
-    <div class="item panel panel-default"">
-        <div class="panel-heading">
-            <div class="row">
-                <div class="col-xs-3 label-shell">
-                    <label for="vsa-title<%= index %>"><i class="fa fa-arrows drag-handle"></i> <?= t('Title') ?></label>
+    <div class="item panel panel-default">
+        <div class="panel-heading" style="cursor: move">
+            <?php
+            if (version_compare(APP_VERSION, '9') < 0) {
+                ?>
+                <div class="row">
+                    <div class="col-xs-2 label-shell" style="margin-top: 5px">
+                        <div style="text-align: right">
+                            <span style="float: left; margin-top: 3px">
+                                &#x2195; <!-- UP DOWN ARROW -->
+                            </style>
+                            <?= t('Title') ?>
+                        </div>
+                    </div>
+                    <div class="col-xs-6">
+                        <input type="text" class="form-control" name="title[]" value="<%= title %>">
+                    </div>
+                    <div class="col-xs-4 text-right">
+                        <button type="button" class="btn btn-default btn-edit-item"><?= t('Edit') ?></button>
+                        <button type="button" class="btn btn-danger btn-delete-item"><?= t('Delete') ?></button>
+                    </div>
                 </div>
-                <div class="col-xs-5">
-                    <input type="text" id="vsa-title<%= index %>" class="form-control" name="title[]" value="<%= title %>">
+                <?php
+            } else {
+                ?>
+                <div class="input-group mt-2">
+                    <span class="input-group-text">
+                        &#x2195; <!-- UP DOWN ARROW -->
+                        <?= t('Title') ?>
+                    </span>
+                    <input type="text" class="form-control" name="title[]" value="<%= title %>">
+                    <button type="button" class="btn btn-primary btn-edit-item"><?= t('Edit') ?></button>
+                    <button type="button" class="btn btn-danger btn-delete-item"><?= t('Delete') ?></button>
                 </div>
-                <div class="col-xs-4 text-right">
-                    <button type="button" class="btn btn-edit-item btn-default"><?= t('Edit') ?></button>
-                    <button type="button" class="btn btn-delete-item btn-danger"><?= t('Delete') ?></button>
-                </div>
-            </div>
+                <?php
+            }
+            ?>
         </div>
-        <div class="panel-body form-horizontal">
+        <div class="panel-body form-horizontal" style="display: none">
             <div class="form-group">
                 <label class="col-xs-3 control-label" for="vsa-description<%= index %>"><?= t('Description') ?>:</label>
                 <div class="col-xs-9">
@@ -185,6 +170,7 @@ $form.on('click', '.btn-delete-item', function() {
 
 $('.items-container').sortable({
     handle: '.panel-heading',
+    axis: 'y',
 });
 
 
