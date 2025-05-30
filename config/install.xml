@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<concrete5-cif version="1.0">
+
+    <blocktypes>
+        <blocktype handle="vivid_simple_accordion" package="simple_accordion" />
+    </blocktypes>
+
+    <blocktypesets>
+        <blocktypeset handle="navigation" name="Navigation" package="simple_accordion">
+            <blocktype handle="vivid_simple_accordion" />
+        </blocktypeset>
+    </blocktypesets>
+
+</concrete5-cif>

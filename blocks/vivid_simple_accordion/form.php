@@ -1,219 +1,200 @@
-<?php  defined('C5_EXECUTE') or die("Access Denied.");
-$fp = FilePermissions::getGlobal();
-$tp = new TaskPermission();
+<?php
+
+defined('C5_EXECUTE') or die('Access Denied.');
+
+/**
+ * @var Concrete\Core\Block\View\BlockView $view
+ * @var Concrete\Core\Form\Service\Form $form
+ * @var Concrete\Core\Application\Service\UserInterface $ui
+ * @var Concrete\Core\Editor\CkeditorEditor $editor
+ *
+ * @var string $framework
+ * @var string $semantic
+ * @var array $items
+ */
+
+$tabsPrefix = version_compare(APP_VERSION, '9') < 0 ? 'ccm-tab-content-' : '';
+
 ?>
 
 <style type="text/css">
-    .panel-heading { cursor: move; }
-        .panel-heading .label-shell { margin-top: 5px; }
-            .panel-heading .label-shell label { display: block; text-align: right; }
-            .panel-heading .label-shell label i { float: left; margin-top: 3px; cursor: move; }
-    .panel-body { display: none; }
-    .item-summary { padding: 10px; }
-    .item-summary.active { background: #efefef; }
-    .item-detail { display: none; background: #efefef; padding: 10px; }
-    .tab-pane { padding: 20px 0; }
-    .item-shell {position: relative; padding-bottom: 0 !important;  }
-    .redactor_editor {  padding: 20px;  }
+.panel-heading {
+    cursor: move;
+}
+.panel-heading .label-shell {
+    margin-top: 5px;
+}
+.panel-heading .label-shell label {
+    display: block;
+    text-align: right;
+}
+
+.panel-heading .label-shell label i {
+    float: left;
+    margin-top: 3px;
+    cursor: move;
+}
+.panel-body {
+    display: none;
+}
+.item-summary {
+    padding: 10px;
+}
+.item-summary.active {
+    background: #efefef;
+}
+.item-detail {
+    display: none;
+    background: #efefef;
+    padding: 10px;
+}
+.tab-pane {
+    padding: 20px 0;
+}
+.item-shell {
+    position: relative;
+    padding-bottom: 0 !important;
+}
 </style>
-<?php
-$addSelected = true;
-?>
-<p>
-<?php print Loader::helper('concrete/ui')->tabs(array(
-    array('pane-items', t('Items'), $addSelected),
-    array('pane-settings', t('Settings'))
-));?>
-</p>
-<div class="ccm-tab-content" id="ccm-tab-content-pane-items">
-        
-    <div class="well">
-        <?php echo t('You can rearrange items if needed.'); ?>
-    </div>
-    
-    <div class="items-container"></div>  
-    
-    <span class="btn btn-success btn-add-item"><?php echo t('Add Item') ?></span>  
-        
-</div>
-    
-<div class="ccm-tab-content" id="ccm-tab-content-pane-settings">
-           
-    <div class="form-group">                    
-        <label class="form-label"><?php echo t('Use Framework Markup');?></label>
+
+<?= $ui->tabs([
+        ['vsa-pane-items', t('Items'), true],
+        ['vsa-pane-settings', t('Settings')],
+]) ?>
+<div class="tab-content">
+    <div class="ccm-tab-content tab-pane active" role="tabpanel" id="<?= $tabsPrefix ?>vsa-pane-items">
         <div class="well">
-            <?php echo t('If your theme uses the bootstrap framework, then select that. Otherwise, just choose none');?>
+            <?= t('You can rearrange items if needed.') ?>
         </div>
-        <?php echo $form->select("framework",array(""=>t("None"), "bootstrap"=>t("Bootstrap")),$framework); ?>                 
+        <div class="items-container"></div>
+        <button type="button" class="btn btn-success btn-add-item"><?= t('Add Item') ?></button>
     </div>
-    <div class="form-group">                    
-        <label class="form-label"><?php echo t('Semantic Tag for Title');?></label>
-        <?php echo $form->select("semantic",array("h2"=>t("H2"), "h3"=>t("H3"), "h4"=>t("H4"), "span"=>t("Span"), "paragraph"=>t("Paragraph")),$semantic); ?>                 
-    </div>    
-        
+    <div class="ccm-tab-content tab-pane" role="tabpanel" id="<?= $tabsPrefix ?>vsa-pane-settings">
+        <div class="form-group">
+            <label class="form-label"><?= t('Framework') ?></label>
+            <?= $form->select(
+                'framework',
+                [
+                    '' => t('None'),
+                    'bootstrap' => 'Bootstrap 3',
+                ],
+                $framework
+            ) ?>
+            <div class="small text-muted">
+                <?= t('If your theme uses the bootstrap framework, then select that. Otherwise, just choose none') ?>
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="form-label"><?= t('Semantic Tag for Title') ?></label>
+            <?= $form->select(
+                'semantic',
+                [
+                    'h2' => t('H2'),
+                    'h3' => t('H3'),
+                    'h4 '=> t('H4'),
+                    'span' => t('Span'),
+                    'paragraph' => t('Paragraph'),
+                ],
+                $semantic
+            ) ?>
+        </div>
+    </div>
 </div>
-    
-<script type="text/template" id="item-template">
-    <div class="item panel panel-default" data-order="<%=sort%>">
+
+<script type="text/template" id="vsa-item-template">
+    <div class="item panel panel-default"">
         <div class="panel-heading">
             <div class="row">
                 <div class="col-xs-3 label-shell">
-                    <label for="title<%=sort%>"><i class="fa fa-arrows drag-handle"></i> <?=t('Title')?></label>
+                    <label for="vsa-title<%= index %>"><i class="fa fa-arrows drag-handle"></i> <?= t('Title') ?></label>
                 </div>
                 <div class="col-xs-5">
-                    <input type="text" class="form-control" name="title[]" value="<%=title%>">    
+                    <input type="text" id="vsa-title<%= index %>" class="form-control" name="title[]" value="<%= title %>">
                 </div>
                 <div class="col-xs-4 text-right">
-                    <a href="javascript:editItem(<%=sort%>);" class="btn btn-edit-item btn-default"><?=t('Edit')?></a>
-                <a href="javascript:deleteItem(<%=sort%>)" class="btn btn-delete-item btn-danger"><?=t('Delete')?></a>
+                    <button type="button" class="btn btn-edit-item btn-default"><?= t('Edit') ?></button>
+                    <button type="button" class="btn btn-delete-item btn-danger"><?= t('Delete') ?></button>
                 </div>
             </div>
         </div>
-        <div class="panel-body form-horizontal"> 
+        <div class="panel-body form-horizontal">
             <div class="form-group">
-                <label class="col-xs-3 control-label" for="description<%=sort%>"><?=t('Description:')?></label>
+                <label class="col-xs-3 control-label" for="vsa-description<%= index %>"><?= t('Description') ?>:</label>
                 <div class="col-xs-9">
-                    <textarea class="redactor-content" name="description[]" id="description<%=sort%>"><%=description%></textarea>
+                    <textarea name="description[]" id="vsa-description<%= index %>"><%= description %></textarea>
                 </div>
             </div>
             <div class="form-group">
-                <label class="col-xs-3 control-label"><?=t('State')?></label>
+                <label class="col-xs-3 control-label"><?= t('State') ?></label>
                 <div class="col-xs-9">
                     <select class="form-control" name="state[]">
-                        <option value="closed" <%= state=='closed' ? 'selected' : '' %>><?php echo t('Closed');?></option>
-                        <option value="open" <%= state=='open' ? 'selected' : '' %>><?php echo t('Open');?></option>
+                        <option value="closed" <%= state == 'closed' ? 'selected' : '' %>><?= t('Closed') ?></option>
+                        <option value="open" <%= state=='open' ? 'selected' : '' %>><?= t('Open') ?></option>
                     </select>
                 </div>
-            </div>     
+            </div>
         </div>
-        <input class="item-sort" type="hidden" name="<?php echo $view->field('sortOrder')?>[]" value="<%=sort%>"/>
+        <input type="hidden" name="sortOrder[]" value="<%= index %>" />
     </div>
 </script>
 
-<script type="text/javascript">
+<script>
+(function() {
 
-//Edit Button
-var editItem = function(i){
-    $(".item[data-order='"+i+"']").find(".panel-body").toggle();
-};
-//Delete Button
-var deleteItem = function(i) {
-    var confirmDelete = confirm('<?php echo t('Are you sure?') ?>');
-    if(confirmDelete == true) {
-        $(".item[data-order='"+i+"']").remove();
-        indexItems();
+var $form = $('#ccm-block-form');
+var $itemsContainer = $form.find('.items-container');
+var itemTemplate = _.template($form.find('#vsa-item-template').html());
+var initEditor = <?= $editor->getEditorInitJSFunction() ?>;
+
+var numCreatedItems = 0;
+
+function createItem(data, focalize)
+{
+    data = $.extend({}, data || {}, {index: numCreatedItems++});
+    $itemsContainer.append(itemTemplate(data));
+    initEditor('#vsa-description' + data.index);
+    if (focalize) {
+        var newItem = $itemsContainer.find('.item').last();
+        var thisModal = $form.closest('.ui-dialog-content');
+        thisModal.scrollTop(newItem.offset().top);
     }
-};
-//Choose Image
-var chooseImage = function(i){
-    var imgShell = $('#select-image-'+i);
-    ConcreteFileManager.launchDialog(function (data) {
-        ConcreteFileManager.getFileDetails(data.fID, function(r) {
-            jQuery.fn.dialog.hideLoader();
-            var file = r.files[0];
-            imgShell.html(file.resultsThumbnailImg);
-            imgShell.next('.image-fID').val(file.fID)
-        });
-    });
-};
+}
 
-//Index our Items
-function indexItems(){
-    $('.items-container .item').each(function(i) {
-        $(this).find('.item-sort').val(i);
-        $(this).attr("data-order",i);
-    });
-};
-
-$(function(){
-    
-    //DEFINE VARS
-    
-        //use when using Redactor (wysiwyg)
-        var CCM_EDITOR_SECURITY_TOKEN = "<?php echo Loader::helper('validation/token')->generate('editor')?>";
-        
-        //Define container and items
-        var itemsContainer = $('.items-container');
-        var itemTemplate = _.template($('#item-template').html());
-    
-    //BASIC FUNCTIONS
-    
-        //Make items sortable. If we re-sort them, re-index them.
-        $(".items-container").sortable({
-            handle: ".panel-heading",
-            update: function(){
-                indexItems();
-            }
-        });
-    
-    //LOAD UP OUR ITEMS
-        
-        //for each Item, apply the template.
-        <?php 
-        if($items) {
-            foreach ($items as $item) { 
-        ?>
-        itemsContainer.append(itemTemplate({
-            //define variables to pass to the template.
-            title: '<?php echo addslashes($item['title']) ?>',
-            
-            //REDACTOR
-            description: '<?php echo str_replace(array("\t", "\r", "\n"), "", addslashes($item['description']))?>',
-            
-            state: '<?=$item['state']?>',            
-            sort: '<?=$item['sortOrder'] ?>'
-        }));
-        <?php 
-            }
-        }
-        ?>    
-        
-        //Init Index
-        indexItems();
-
-        //Init Redactor
-        $('.redactor-content').redactor({
-            minHeight: '200',
-            'concrete5': {
-                filemanager: <?php echo $fp->canAccessFileManager()?>,
-                sitemap: <?php echo $tp->canAccessSitemap()?>,
-                lightbox: true
-            }
-        });
-        
-    //CREATE NEW ITEM
-        
-        $('.btn-add-item').click(function(){
-            
-            //Use the template to create a new item.
-            var temp = $(".items-container .item").length;
-            temp = (temp);
-            itemsContainer.append(itemTemplate({
-                //vars to pass to the template
-                title: '',
-                description: '',
-                state: '',
-                
-                sort: temp
-            }));
-            
-            var thisModal = $(this).closest('.ui-dialog-content');
-            var newItem = $('.items-container .item').last();
-            thisModal.scrollTop(newItem.offset().top);
-            
-            //Init Redactor
-            newItem.find('.redactor-content').redactor({
-                minHeight: '100',
-                'concrete5': {
-                    filemanager: <?php echo $fp->canAccessFileManager()?>,
-                    sitemap: <?php echo $tp->canAccessSitemap()?>,
-                    lightbox: true
-                }
-            });
-            
-            //Init Index
-            indexItems();
-        });    
-
+$form.find('.btn-add-item').on('click', function() {
+    createItem(
+        {
+            title: '',
+            description: '',
+            state: '',
+        },
+        true
+    );
 });
+
+$form.on('click', '.btn-edit-item', function() {
+    $(this).closest('.item').find('.panel-body').toggle();
+});
+
+$form.on('click', '.btn-delete-item', function() {
+    if (!window.confirm(<?= json_encode(t('Are you sure?')) ?>)) {
+        return;
+    }
+    $(this).closest('.item').remove();
+});
+
+
+$('.items-container').sortable({
+    handle: '.panel-heading',
+});
+
+
+<?php
+foreach ($items as $item) {
+    ?>
+    createItem(<?= json_encode($item) ?>);
+    <?php
+}
+?>
+
+})();
 </script>
