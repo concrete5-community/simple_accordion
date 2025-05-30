@@ -335,17 +335,15 @@ class Controller extends BlockController implements FileTrackableInterface
     }
 
     /**
-     * @return int[]
+     * @return string[]
      */
     private function getUsedFilesDownload(array $items)
     {
         $ids = [];
         $matches = null;
         foreach ($items as $item) {
-            if (preg_match_all('(FID_DL_\d+)', $item['description'], $matches)) {
-                foreach ($matches[0] as $match) {
-                    $ids[] = (int) (explode('_', $match)[2]);
-                }
+            if (preg_match_all('/\bFID_DL_(?<key>[a-f0-9][a-f0-9\-]*)\b/i', $item['description'], $matches)) {
+                $ids = $matches['key'];
             }
         }
 
