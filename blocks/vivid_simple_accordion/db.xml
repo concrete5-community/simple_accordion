@@ -1,19 +1,48 @@
-<?xml version="1.0"?>
-<schema version="0.3">
+<?xml version="1.0" encoding="UTF-8"?>
+<schema
+    xmlns="http://www.concrete5.org/doctrine-xml/0.5"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.concrete5.org/doctrine-xml/0.5 https://concretecms.github.io/doctrine-xml/doctrine-xml-0.5.xsd"
+>
+
     <table name="btVividSimpleAccordion">
-        <field name="bID" type="I">
-            <key />
+        <field name="bID" type="integer">
             <unsigned />
+            <key />
         </field>
-        <field name="framework" type="C" size="50"></field>
-        <field name="semantic" type="C" size="10"></field>
+        <field name="framework" type="string" size="50">
+            <notnull />
+        </field>
+        <field name="semantic" type="string" size="10">
+            <notnull />
+        </field>
     </table>
+
     <table name="btVividSimpleAccordionItem">
-        <field name="id" type="I"><unsigned/><key/><autoincrement/></field>
-        <field name="bID" type="I"><unsigned/></field>
-        <field name="title" type="C" size="X2"></field>
-        <field name="description" type="X2"></field>
-        <field name="state" type="C" size="20"></field>
-        <field name="sortOrder" type="I"></field>
+        <field name="id" type="integer">
+            <unsigned />
+            <autoincrement />
+            <key />
+        </field>
+        <field name="bID" type="integer">
+            <unsigned />
+            <notnull />
+        </field>
+        <field name="title" type="string" size="255">
+            <notnull />
+        </field>
+        <field name="description" type="text">
+            <notnull />
+        </field>
+        <field name="state" type="string" size="20">
+            <notnull />
+        </field>
+        <field name="sortOrder" type="integer">
+            <notnull />
+        </field>
+        <index>
+            <col>bID</col>
+        </index>
     </table>
+
 </schema>

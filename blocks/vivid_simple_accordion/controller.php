@@ -1,120 +1,196 @@
 <?php
+
 namespace Concrete\Package\SimpleAccordion\Block\VividSimpleAccordion;
-use \Concrete\Core\Block\BlockController;
-use Loader;
+
+use Concrete\Core\Block\BlockController;
+use Concrete\Core\Database\Connection\Connection;
+use Concrete\Core\Page\Page;
 
 class Controller extends BlockController
 {
+    /**
+     * {@inheritdoc}
+     *
+     * @see \Concrete\Core\Block\BlockController::$btTable
+     */
     protected $btTable = 'btVividSimpleAccordion';
-    protected $btInterfaceWidth = "700";
+
+    /**
+     * {@inheritdoc}
+     *
+     * @see \Concrete\Core\Block\BlockController::$btWrapperClass
+     */
     protected $btWrapperClass = 'ccm-ui';
-    protected $btInterfaceHeight = "465";
 
-    public function getBlockTypeDescription()
-    {
-        return t("Add Collapsible Content to your Site");
-    }
+    /**
+     * {@inheritdoc}
+     *
+     * @see \Concrete\Core\Block\BlockController::$btInterfaceWidth
+     */
+    protected $btInterfaceWidth = 700;
 
+    /**
+     * {@inheritdoc}
+     *
+     * @see \Concrete\Core\Block\BlockController::$btInterfaceHeight
+     */
+    protected $btInterfaceHeight = 465;
+
+    /**
+     * @var string|null
+     */
+    protected $framework;
+
+    /**
+     * @var string|null
+     */
+    protected $semantic;
+
+    /**
+     * {@inheritdoc}
+     *
+     * @see \Concrete\Core\Block\BlockController::getBlockTypeName()
+     */
     public function getBlockTypeName()
     {
-        return t("Simple Accordion");
+        return t('Simple Accordion');
+    }
+
+    /**
+     * {@inheritdoc}
+     *
+     * @see \Concrete\Core\Block\BlockController::getBlockTypeDescription()
+     */
+    public function getBlockTypeDescription()
+    {
+        return t('Add Collapsible Content to your Site');
     }
 
     public function add()
     {
-        $this->requireAsset('redactor');
+        $this->addOrEdit();
     }
 
     public function edit()
     {
-        $this->requireAsset('redactor');
-        $db = Loader::db();
-        $items = $db->GetAll('SELECT * from btVividSimpleAccordionItem WHERE bID = ? ORDER BY sortOrder', array($this->bID));
-        $this->set('items', $items);
+        $this->addOrEdit();
+    }
+
+    /**
+     * {@inheritdoc}
+     *
+     * @see \Concrete\Core\Block\BlockController::registerViewAssets()
+     */
+    public function registerViewAssets($outputContent = '')
+    {
+        $this->requireAsset('javascript', 'jquery');
     }
 
     public function view()
     {
-        $db = Loader::db();
-        $items = $db->GetAll('SELECT * from btVividSimpleAccordionItem WHERE bID = ? ORDER BY sortOrder', array($this->bID));
+        $cn = $this->app->make(Connection::class);
+        $items = $cn->fetchAll('SELECT * from btVividSimpleAccordionItem WHERE bID = ? ORDER BY sortOrder', [$this->bID]);
         $this->set('items', $items);
-        $this->requireAsset('css', 'font-awesome');
+        if ($items === []) {
+            $page = Page::getCurrentPage();
+            $this->set('editMode', $page && !$page->isError() && $page->isEditMode());
+        }
         switch($this->semantic){
-            case "h2":
-                $openTag = "<h2 class='panel-title'>";
-                $closeTag = "</h2>";
-                break;    
-            case "h3":
-                $openTag = "<h3 class='panel-title'>";
-                $closeTag = "</h3>";
+            case 'h2':
+            case 'h3':
+            case 'h4':
+            case 'span':
+                $openTag = '<' . $this->semantic . ' class="panel-title">';
+                $closeTag = '</' . $this->semantic . '>';
                 break;
-            case "h4":
-                $openTag = "<h4 class='panel-title'>";
-                $closeTag = "</h4>";
+            case 'paragraph':
+                $openTag = '<p class="panel-title">';
+                $closeTag = '</p>';
                 break;
-            case "paragraph":
-                $openTag = "<p class='panel-title'>";
-                $closeTag = "</p>";
-                break;
-            case "span":
-                $openTag = "<span class='panel-title'>";
-                $closeTag = "</span>";
+            default:
+                $openTag = '';
+                $closeTag = '';
                 break;
         }
-        $this->set("openTag",$openTag);
-        $this->set("closeTag",$closeTag);
+        $this->set('openTag', $openTag);
+        $this->set('closeTag', $closeTag);
     }
 
-    public function duplicate($newBID) {
+    /**
+     * {@inheritdoc}
+     *
+     * @see \Concrete\Core\Block\BlockController::duplicate()
+     */
+    public function duplicate($newBID)
+    {
         parent::duplicate($newBID);
-        $db = Loader::db();
-        $v = array($this->bID);
-        $q = 'select * from btVividSimpleAccordionItem where bID = ?';
-        $r = $db->query($q, $v);
-        while ($row = $r->FetchRow()) {
-            $db->execute('INSERT INTO btVividSimpleAccordionItem (bID, title, description, state, sortOrder) values(?,?,?,?,?)',
-                array(
-                    $newBID,
-                    $args['title'][$i],
-                    $args['description'][$i],
-                    $args['state'][$i],
-                    $args['sortOrder'][$i]
-                )
-            );
-        }
+        $cn = $this->app->make(Connection::class);
+        $copyFields = 'title, description, state, sortOrder';
+        $cn->executeUpdate(
+            "INSERT INTO btVividSimpleAccordionItem (bID, {$copyFields}) SELECT :newBID, {$copyFields} FROM btVividSimpleAccordionItem WHERE btVividSimpleAccordionItem.bID = :oldBID",
+            [
+                'oldBID' => $this->bID,
+                'newBID' => $newBID,
+            ]
+        );
     }
 
+    /**
+     * {@inheritdoc}
+     *
+     * @see \Concrete\Core\Block\BlockController::delete()
+     */
     public function delete()
     {
-        $db = Loader::db();
-        $db->delete('btVividSimpleAccordionItem', array('bID' => $this->bID));
+        $cn = $this->app->make(Connection::class);
+        $cn->delete('btVividSimpleAccordionItem', ['bID' => $this->bID]);
         parent::delete();
     }
 
+    /**
+     * {@inheritdoc}
+     *
+     * @see \Concrete\Core\Block\BlockController::save()
+     */
     public function save($args)
     {
-        $db = Loader::db();
-        $db->execute('DELETE from btVividSimpleAccordionItem WHERE bID = ?', array($this->bID));
-        $count = count($args['sortOrder']);
-        $i = 0;
-        parent::save($args);
-        while ($i < $count) {
-            $db->execute('INSERT INTO btVividSimpleAccordionItem (bID, title, description, state, sortOrder) values(?,?,?,?,?)',
-                array(
-                    $this->bID,
-                    $args['title'][$i],
-                    $args['description'][$i],
-                    $args['state'][$i],
-                    $args['sortOrder'][$i]
-                )
-            );
-            $i++;
-        }
+        $cn = $this->app->make(Connection::class);
+        $cn->transactional(
+            function () use ($cn, $args) {
+                parent::save($args);
+                $cn->executeUpdate('DELETE from btVividSimpleAccordionItem WHERE bID = ?', [$this->bID]);
+                if (isset($args['sortOrder']) && is_array($args['sortOrder'])) {
+                    $sortOrder = 0;
+                    foreach (array_keys($args['sortOrder']) as $i) {
+                        $cn->insert('btVividSimpleAccordionItem', [
+                            'bID' => $this->bID,
+                            'title' => isset($args['title'][$i]) ? trim($args['title'][$i]) : '',
+                            'description' => isset($args['description'][$i]) ? trim($args['description'][$i]) : '',
+                            'state' => isset($args['state'][$i]) ? trim($args['state'][$i]) : '',
+                            'sortOrder' => $sortOrder,
+                        ]);
+                        $sortOrder++;
+                    }
+                }
+            }
+        );
         $blockObject = $this->getBlockObject();
-        if (is_object($blockObject)) {
-            $blockObject->setCustomTemplate($args['framework']);
+        if ($blockObject) {
+            $blockObject->setCustomTemplate(isset($args['framework']) ? $args['framework'] : null);
         }
     }
-    
 
+    private function addOrEdit()
+    {
+        $this->set('ui', $this->app->make('helper/concrete/ui'));
+        $this->set('editor', $this->app->make('editor'));
+        if ($this->bID) {
+            $cn = $this->app->make(Connection::class);
+            $this->set('items', $cn->fetchAll('SELECT * from btVividSimpleAccordionItem WHERE bID = ? ORDER BY sortOrder', [$this->bID]));
+        } else {
+            $this->set('framework', '');
+            $this->set('semantic', 'span');
+            $this->set('items', []);
+        }
+    }
 }

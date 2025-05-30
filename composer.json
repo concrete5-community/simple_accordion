@@ -33,7 +33,7 @@
         "source": "https://github.com/concrete5-community/simple_accordion"
     },
     "require": {
-        "concrete5/core": "^5.7.1 || ^8"
+        "concrete5/core": "^8.5.2"
     },
     "config": {
         "optimize-autoloader": true,
