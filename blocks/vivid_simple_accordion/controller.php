@@ -4,10 +4,11 @@ namespace Concrete\Package\SimpleAccordion\Block\VividSimpleAccordion;
 
 use Concrete\Core\Block\BlockController;
 use Concrete\Core\Database\Connection\Connection;
+use Concrete\Core\Editor\LinkAbstractor;
 use Concrete\Core\File\Tracker\FileTrackableInterface;
 use Concrete\Core\Page\Page;
 use Concrete\Core\Statistics\UsageTracker\AggregateTracker;
-use Concrete\Core\Editor\LinkAbstractor;
+use Concrete\Core\Utility\Service\Xml;
 
 class Controller extends BlockController implements FileTrackableInterface
 {
@@ -38,6 +39,20 @@ class Controller extends BlockController implements FileTrackableInterface
      * @see \Concrete\Core\Block\BlockController::$btInterfaceHeight
      */
     protected $btInterfaceHeight = 465;
+
+    /**
+     * {@inheritdoc}
+     *
+     * @see \Concrete\Core\Block\BlockController::$btExportTables
+     */
+    protected $btExportTables = ['btVividSimpleAccordion', 'btVividSimpleAccordionItem'];
+
+    /**
+     * {@inheritdoc}
+     *
+     * @see \Concrete\Core\Block\BlockController::$btExportContentColumns
+     */
+    protected $btExportContentColumns = ['description'];
 
     /**
      * @var string|null
@@ -206,6 +221,45 @@ class Controller extends BlockController implements FileTrackableInterface
     /**
      * {@inheritdoc}
      *
+     * @see \Concrete\Core\Block\BlockController::export()
+     */
+    public function export(\SimpleXMLElement $blockNode)
+    {
+        parent::export($blockNode);
+        $idNodes = $blockNode->xpath('./data[@table="btVividSimpleAccordionItem"]/record/id');
+        if ($idNodes) {
+            foreach ($idNodes as $idNode) {
+                unset($idNode[0]);
+            }
+        }
+        $sortOrderNodes = $blockNode->xpath('./data[@table="btVividSimpleAccordionItem"]/record/sortOrder');
+        if ($sortOrderNodes) {
+            foreach ($sortOrderNodes as $sortOrderNode) {
+                unset($sortOrderNode[0]);
+            }
+        }
+        if (version_compare(APP_VERSION, '9.4') < 0) {
+            $xmlService = $this->app->make(Xml::class);
+            $recordNodes = $blockNode->xpath('./data[@table="btVividSimpleAccordionItem"]/record');
+            if ($recordNodes) {
+                foreach ($recordNodes as $recordNode) {
+                    if (!isset($recordNode->description)) {
+                        continue;
+                    }
+                    $description = (string) $recordNode->description;
+                    if ($description === '') {
+                        continue;
+                    }
+                    unset($recordNode->description);
+                    $xmlService->createCDataNode($recordNode, 'description', LinkAbstractor::export($description));
+                }
+            }
+        }
+    }
+
+    /**
+     * {@inheritdoc}
+     *
      * @see \Concrete\Core\File\Tracker\FileTrackableInterface::getUsedCollection()
      */
     public function getUsedCollection()
@@ -239,6 +293,30 @@ class Controller extends BlockController implements FileTrackableInterface
         }
 
         return $this->tracker;
+    }
+
+    /**
+     * {@inheritdoc}
+     *
+     * @see \Concrete\Core\Block\BlockController::importAdditionalData()
+     */
+    protected function importAdditionalData($b, $blockNode)
+    {
+        $recordNodes = $blockNode->xpath('./data[@table="btVividSimpleAccordionItem"]/record');
+        if ($recordNodes) {
+            $cn = $this->app->make(Connection::class);
+            $bID = (int) $b->getBlockID();
+            $sortOrder = 0;
+            foreach ($recordNodes as $recordNode) {
+                $cn->insert('btVividSimpleAccordionItem', [
+                    'bID' => $bID,
+                    'title' => isset($recordNode->title) ? (string) $recordNode->title : '',
+                    'description' => isset($recordNode->description) ? LinkAbstractor::import((string) $recordNode->description) : '',
+                    'state' => isset($recordNode->state) ? (string) $recordNode->state : '',
+                    'sortOrder' => $sortOrder++,
+                ]);
+            }
+        }
     }
 
     private function getUsedFilesImages(array $items)
