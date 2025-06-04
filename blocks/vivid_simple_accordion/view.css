@@ -18,14 +18,12 @@
 }
 
 .simple-accordion-group.closed .simple-accordion-title-shell>*:before {
-    font-family: "FontAwesome";
-    content: "\f0da";
+    content: "\23f5"; /* BLACK MEDIUM RIGHT-POINTING TRIANGLE */
     margin-right: 8px;
 }
 
 .simple-accordion-group.open .simple-accordion-title-shell>*:before {
-    font-family: "FontAwesome";
-    content: "\f0d7";
+    content: "\23f7"; /* BLACK MEDIUM DOWN-POINTING TRIANGLE */
     margin-right: 8px;
 }
 

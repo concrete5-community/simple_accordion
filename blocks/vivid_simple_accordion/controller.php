@@ -181,7 +181,9 @@ class Controller extends BlockController implements FileTrackableInterface
         $cn = $this->app->make(Connection::class);
         $cn->delete('btVividSimpleAccordionItem', ['bID' => $this->bID]);
         parent::delete();
-        $this->getTracker()->forget($this);
+        if (version_compare(APP_VERSION, '9.0.2') < 0) {
+            $this->getTracker()->forget($this);
+        }
     }
 
     /**
@@ -215,7 +217,9 @@ class Controller extends BlockController implements FileTrackableInterface
         if ($blockObject) {
             $blockObject->setCustomTemplate(isset($args['framework']) ? $args['framework'] : null);
         }
-        $this->getTracker()->track($this);
+        if (version_compare(APP_VERSION, '9.0.2') < 0) {
+            $this->getTracker()->track($this);
+        }
     }
 
     /**
@@ -335,17 +339,15 @@ class Controller extends BlockController implements FileTrackableInterface
     }
 
     /**
-     * @return int[]
+     * @return string[]
      */
     private function getUsedFilesDownload(array $items)
     {
         $ids = [];
         $matches = null;
         foreach ($items as $item) {
-            if (preg_match_all('(FID_DL_\d+)', $item['description'], $matches)) {
-                foreach ($matches[0] as $match) {
-                    $ids[] = (int) (explode('_', $match)[2]);
-                }
+            if (preg_match_all('/\bFID_DL_(?<key>[a-f0-9][a-f0-9\-]*)\b/i', $item['description'], $matches)) {
+                $ids = $matches['key'];
             }
         }
 
