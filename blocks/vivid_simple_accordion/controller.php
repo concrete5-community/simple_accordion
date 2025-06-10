@@ -22,13 +22,6 @@ class Controller extends BlockController implements FileTrackableInterface
     /**
      * {@inheritdoc}
      *
-     * @see \Concrete\Core\Block\BlockController::$btWrapperClass
-     */
-    protected $btWrapperClass = 'ccm-ui';
-
-    /**
-     * {@inheritdoc}
-     *
      * @see \Concrete\Core\Block\BlockController::$btInterfaceWidth
      */
     protected $btInterfaceWidth = 700;
@@ -68,12 +61,6 @@ class Controller extends BlockController implements FileTrackableInterface
      * @var \Concrete\Core\Statistics\UsageTracker\AggregateTracker|null
      */
     protected $tracker;
-
-    public function __construct($obj = null, $tracker = null)
-    {
-        parent::__construct($obj);
-        $this->tracker = $tracker;
-    }
 
     /**
      * {@inheritdoc}
@@ -278,13 +265,14 @@ class Controller extends BlockController implements FileTrackableInterface
      */
     public function getUsedFiles()
     {
+        $result = [];
         $cn = $this->app->make(Connection::class);
-        $items = $cn->fetchAll('SELECT * from btVividSimpleAccordionItem WHERE bID = ? ORDER BY sortOrder', [$this->bID]);
+        $rs = $cn->executeQuery('SELECT description from btVividSimpleAccordionItem WHERE bID = ? ORDER BY sortOrder', [$this->bID]);
+        while (($description = $rs->fetchColumn()) !== false) {
+            $result = array_merge($result, self::getUsedFilesIn($description));
+        }
 
-        return array_merge(
-            $this->getUsedFilesImages($items),
-            $this->getUsedFilesDownload($items)
-        );
+        return $result;
     }
 
     /**
@@ -373,5 +361,38 @@ class Controller extends BlockController implements FileTrackableInterface
             $this->set('semantic', 'span');
             $this->set('items', []);
         }
+    }
+
+    /**
+     * @param string|null $richText
+     *
+     * @return int[]|string[]
+     */
+    private static function getUsedFilesIn($richText)
+    {
+        $richText = (string) $richText;
+        if ($richText === '') {
+            return [];
+        }
+        $rxIdentifier = '(?<id>[1-9][0-9]{0,18})';
+        if (method_exists(\Concrete\Core\File\File::class, 'getByUUID')) {
+            $rxIdentifier = '(?:(?<uuid>[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12})|' . $rxIdentifier . ')';
+        }
+        $result = [];
+        $matches = null;
+        foreach ([
+            '/\<concrete-picture[^>]*?\bfID\s*=\s*[\'"]' . $rxIdentifier . '[\'"]/i',
+            '/\bFID_DL_' . $rxIdentifier . '\b/',
+        ] as $rx) {
+            if (!preg_match_all($rx, $richText, $matches)) {
+                continue;
+            }
+            $result = array_merge($result, array_map('intval', array_filter($matches['id'])));
+            if (isset($matches['uuid'])) {
+                $result = array_merge($result, array_map('strtolower', array_filter($matches['uuid'])));
+            }
+        }
+
+        return $result;
     }
 }
