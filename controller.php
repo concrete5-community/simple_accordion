@@ -17,7 +17,7 @@ class Controller extends Package implements ProviderInterface
     /**
      * @var string
      */
-    protected $pkgVersion = '1.2.0';
+    protected $pkgVersion = '1.2.1';
 
     /**
      * {@inheritdoc}
